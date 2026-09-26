@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang='en'>
+<head>
+	<meta charset='utf-8'>
+	<title>Translate in Context Menu Preferences</title>
+	<style>
+		:root {
+			color-scheme: dark;
+			background-color: #000;
+			color: #bbb;
+		}
+	</style>
+	<script type='module' src='options.js'></script>
+	<script type='module' src='phone-options.js'></script>
+</head>
+<body>
+	<form id='settings'>
+		<fieldset id='controls' disabled>
+			<label for='api-key'>Google Cloud Translation API key</label>
+			<input id='api-key' type='password' autocomplete='off' spellcheck='false' autocapitalize='off' aria-describedby='key-help' size='46'>
+			<button type='submit'>Save</button>
+			<button id='remove-key' type='button'>Remove key</button>
+		</fieldset>
+	</form>
+	<p id='key-help'>Stored locally without encryption; not synced. Saving does not send a test request.</p>
+	<p id='status' role='status'></p>
+	<h2>Get an API key</h2>
+	<ol>
+		<li>Follow <a href='https://docs.cloud.google.com/translate/docs/setup' target='_blank' rel='noreferrer'>Google’s setup guide</a> to create a project, enable billing, and enable Cloud Translation API.</li>
+		<li>Open <a href='https://console.cloud.google.com/apis/credentials' target='_blank' rel='noreferrer'>Google Cloud Credentials</a>, select <strong>Create credentials → API key</strong>, and restrict the key to <strong>Cloud Translation API</strong>.</li>
+		<li>Paste the key above and click <strong>Save</strong>.</li>
+	</ol>
+	<h2>Price</h2>
+	<p><strong>For typical personal use, such as translating words and short phrases, this extension should be free for you.</strong> The $10 credit is a free allowance, not a monthly fee.</p>
+	<p>Google Cloud Translation Basic NMT pricing in USD, checked September 26, 2026:</p>
+	<ul>
+		<li><strong>Free ($0)</strong> for the first <strong>500,000 characters per month</strong>. Google applies this as a monthly <strong>$10 credit</strong>, shared across Cloud Translation Basic and Advanced.</li>
+	</ul>
+	<p>Usage beyond the free allowance is billed; see <a href='https://cloud.google.com/products/translate/pricing' target='_blank' rel='noreferrer'>Google’s official pricing</a>.</p>
+	<h2>Phone display</h2>
+	<p>Keep the phone display open on the same local network. Select text in Firefox and press <strong>Alt+Shift+T</strong>. You can change this shortcut in Firefox’s Manage Extension Shortcuts screen.</p>
+	<form id='phone-settings'>
+		<fieldset id='phone-controls' disabled>
+			<p><label for='phone-url'>Local server URL</label> <input id='phone-url' type='url' placeholder='http://192.168.1.42:8787' required></p>
+			<p><label for='phone-token'>Pairing token from the local server</label> <input id='phone-token' type='password' autocomplete='off' spellcheck='false' required></p>
+			<button type='submit'>Save phone connection</button>
+			<button id='remove-phone' type='button'>Remove phone connection</button>
+		</fieldset>
+	</form>
+	<p id='phone-status' role='status'></p>
+	<h2>Yandex Translate</h2>
+	<p>Open <a href='https://translate.yandex.ru/' target='_blank' rel='noreferrer'>Yandex Translate</a> in another Firefox window, select text in your working window, and press <strong>Alt+Shift+Y</strong>. This replaces Yandex’s text field using its current language settings. No API key or local server is needed.</p>
+</body>
+</html>

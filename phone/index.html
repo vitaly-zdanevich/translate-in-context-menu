@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang='en'>
+	<head>
+		<meta charset='utf-8'>
+		<meta name='viewport' content='width=device-width, initial-scale=1'>
+		<meta name='theme-color' content='#ffffff' media='(prefers-color-scheme: light)'>
+		<meta name='theme-color' content='#000000' media='(prefers-color-scheme: dark)'>
+		<title>Translation Display</title>
+		<link rel='manifest' href='/manifest.webmanifest'>
+		<link rel='icon' href='/icon.svg' type='image/svg+xml'>
+		<link rel='stylesheet' href='/app.css'>
+		<script src='/app.js' defer></script>
+	</head>
+	<body>
+		<main>
+			<header>
+				<p id='connection-status' role='status'>Pair your phone</p>
+				<button id='forget-button' type='button' hidden>Disconnect</button>
+			</header>
+			<section id='pairing' aria-labelledby='pairing-title'>
+				<h1 id='pairing-title'>Translation Display</h1>
+				<p>Open the pairing link from your computer, or paste its token below.</p>
+				<form id='pairing-form'>
+					<label for='pairing-token'>Pairing token</label>
+					<input id='pairing-token' type='password' autocomplete='off' autocapitalize='off' spellcheck='false' required>
+					<button type='submit'>Connect</button>
+				</form>
+				<p id='pairing-error' role='alert'></p>
+			</section>
+			<section id='viewer' aria-label='Latest translation' hidden>
+				<p id='translation' lang='ru' aria-live='polite'>Select text on your computer and use the shortcut.</p>
+				<p id='original'></p>
+				<p id='translation-error' role='alert'></p>
+				<time id='message-time'></time>
+			</section>
+		</main>
+	</body>
+</html>

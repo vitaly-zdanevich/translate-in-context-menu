@@ -1,0 +1,7 @@
+dist/
+coverage/
+__pycache__/
+*.pyc
+.local/
+.agents/
+.codex/

@@ -1,0 +1,49 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Unit tests and coverage
+        run: npm run test:coverage
+
+      - name: Install Firefox
+        id: firefox
+        uses: browser-actions/setup-firefox@v1
+        with:
+          firefox-version: latest
+
+      - name: Firefox integration tests
+        env:
+          FIREFOX_BIN: ${{ steps.firefox.outputs.firefox-path }}
+        run: xvfb-run -a npm run test:e2e
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Upload extension archive
+        uses: actions/upload-artifact@v6
+        with:
+          name: firefox-extension
+          path: dist/translate-in-context-menu-*.zip
+          if-no-files-found: error
