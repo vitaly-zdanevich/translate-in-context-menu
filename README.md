@@ -1,6 +1,17 @@
 # Translate in Context Menu
 
 [![Tests](https://github.com/vitaly-zdanevich/translate-in-context-menu/actions/workflows/tests.yml/badge.svg)](https://github.com/vitaly-zdanevich/translate-in-context-menu/actions/workflows/tests.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=coverage)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=bugs)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
+[![Duplicated Lines](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
+[![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
+[![Reliability](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
+[![Security](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
 
 A small Firefox extension that shows a Russian translation of selected text in the native context menu, or on your phone when you press **Alt+Shift+T**. Those translations use the official [Google Cloud Translation Basic API (v2)](https://docs.cloud.google.com/translate/docs/reference/rest/v2/translate), detect the source language automatically, and translate into Russian with your Google Cloud API key. **Alt+Shift+Y** instead pastes the selected text into an existing Yandex Translate tab, without an API key.
 
