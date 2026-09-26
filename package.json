@@ -9,7 +9,7 @@
 	},
 	"scripts": {
 		"test": "node --test --test-isolation=none tests/*.test.js",
-		"test:coverage": "node --test --test-isolation=none --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-include='bridge/**' --test-coverage-include='phone/**' tests/*.test.js",
+		"test:coverage": "node --test --test-isolation=none --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-include='bridge/**' --test-coverage-include='phone/**' --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=lcov.info tests/*.test.js",
 		"test:e2e": "python3 tests/e2e/firefox.py",
 		"build": "python3 scripts/build.py",
 		"phone:setup": "node scripts/setup-phone.js",
