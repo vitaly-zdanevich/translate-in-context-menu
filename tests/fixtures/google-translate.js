@@ -3,9 +3,16 @@ const originalNotify = browser.notifications.create.bind(browser.notifications);
 
 /** Retain failure diagnostics in the disposable test profile only. */
 browser.commands.onCommand.addListener(command => browser.storage.session.set({ e2eLastCommand: command }));
+browser.notifications.onShown.addListener(id => browser.storage.session.set({ e2eNotificationShown: id }));
 browser.notifications.create = async (...arguments_) => {
-	await browser.storage.session.set({ e2eNotification: arguments_.at(-1).message });
-	return originalNotify(...arguments_);
+	const options = arguments_.at(-1);
+	await browser.storage.session.set({
+		e2eNotification: options.message,
+		e2eNotificationOptions: options,
+	});
+	const id = await originalNotify(...arguments_);
+	await browser.storage.session.set({ e2eNotificationAccepted: id });
+	return id;
 };
 
 /** Mock Google only; relay requests exercise Firefox's real HTTP stack and CSP. */

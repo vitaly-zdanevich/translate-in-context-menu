@@ -55,6 +55,8 @@ class FirefoxContextMenuTest(unittest.TestCase):
 			port = reservation.getsockname()[1]
 		preferences = {
 			'marionette.port': port,
+			# Keep test popups on this Firefox display, outside the desktop's D-Bus queue.
+			'alerts.useSystemBackend': False,
 			'browser.shell.checkDefaultBrowser': False,
 			'browser.startup.homepage_override.mstone': 'ignore',
 			'browser.startup.page': 0,
@@ -447,6 +449,68 @@ class FirefoxContextMenuTest(unittest.TestCase):
 	def test_hotkey_reaches_phone_over_loopback(self):
 		'''Alt+Shift+T sends a selected-text translation to a real local phone page.'''
 		self.check_phone_hotkey('127.0.0.1')
+
+	def test_notification_shortcut_translates_selected_text(self):
+		'''Alt+Shift+N displays a notification without phone settings.'''
+		self.navigate(self.options_url)
+		self.wait_for_preferences()
+		self.browser.script('''
+			const extension = window.wrappedJSObject.browser;
+			return Promise.all([
+				extension.storage.local.remove(['phoneServerUrl', 'phoneToken']),
+				extension.storage.session.remove([
+					'e2eLastCommand', 'e2eNotification', 'e2eNotificationOptions', 'e2eNotificationAccepted',
+					'e2eNotificationShown',
+				]),
+			]);
+		''')
+		before = self.request_count()
+		options_handle = self.browser.command('WebDriver:GetWindowHandle')['value']
+		fixture_handle = self.browser.command('WebDriver:NewWindow', {'type': 'tab'})['handle']
+		self.addCleanup(self.close_phone_tab, fixture_handle, options_handle)
+		self.browser.command('WebDriver:SwitchToWindow', {'handle': fixture_handle})
+		self.navigate(self.fixture_url)
+		self.browser.script('''
+			window.focus();
+			window.getSelection().selectAllChildren(document.getElementById('greeting'));
+		''')
+		tabs_before = self.browser.command('WebDriver:GetWindowHandles')
+		self.browser.script('''
+			const keyset = document.getElementById('ext-keyset-id-translate-in-context-menu_local_extension');
+			const key = Array.from(keyset.querySelectorAll('key'))
+				.find(element => element.getAttribute('key') === 'N');
+			if (key?.getAttribute('modifiers') !== 'alt,shift') {
+				throw new Error('The expected Alt+Shift+N shortcut was not registered');
+			}
+			key.dispatchEvent(new Event('command', { bubbles: true }));
+		''', context='chrome')
+		# Query the background preferences tab without taking focus from the selection.
+		notification = self.wait_for(lambda: self.browser.script('''
+			const preferences = Array.from(gBrowser.browsers)
+				.find(browser => browser.currentURI.spec === arguments[0]);
+			return preferences.browsingContext.currentWindowGlobal.getActor('MarionetteCommands')
+				.executeScript(`
+					return window.wrappedJSObject.browser.storage.session.get(null)
+						.then(state => state.e2eNotificationAccepted && state.e2eNotificationShown && state);
+				`, [], { sandboxName: 'default', newSandbox: true, timeout: 10000 });
+		''', self.options_url, context='chrome'), 'Firefox to report the translation notification as shown')
+		self.assertEqual(notification['e2eLastCommand'], 'translate-in-notification')
+		self.assertEqual(notification['e2eNotificationAccepted'], 'selection-translation')
+		self.assertEqual(notification['e2eNotificationShown'], 'selection-translation')
+		self.assertEqual(notification['e2eNotification'], 'Привет, мир!')
+		options = notification['e2eNotificationOptions']
+		self.assertEqual(options['type'], 'basic')
+		self.assertEqual(options['title'], 'Перевод на русский')
+		self.assertEqual(options['message'], 'Привет, мир!')
+		self.assertTrue(options['iconUrl'].endswith('/icons/translate.svg'))
+		self.assertEqual(notification['e2eRequestCount'], before + 1)
+		self.browser.command('Marionette:SetContext', {'value': 'content'})
+		self.assertEqual(self.browser.command('WebDriver:GetWindowHandles'), tabs_before)
+		self.assertEqual(self.browser.command('WebDriver:GetWindowHandle')['value'], fixture_handle)
+		self.assertEqual(self.browser.script('return location.href;'), self.fixture_url)
+		self.assertEqual(self.browser.script('return window.getSelection().toString();'), 'Hello, world!')
+		self.navigate(self.options_url)
+		self.browser.script("return window.wrappedJSObject.browser.notifications.clear('selection-translation');")
 
 	def test_hotkey_reaches_phone_over_private_lan(self):
 		'''Private-LAN HTTP also works through the extension's real fetch and CSP.'''

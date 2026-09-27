@@ -1,6 +1,6 @@
 {
 	"name": "translate-in-context-menu",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"private": true,
 	"type": "module",
 	"description": "A Firefox extension that translates selected text to Russian in the context menu.",

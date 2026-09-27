@@ -18,6 +18,16 @@ phone page in a desktop Firefox tab. They exercise Firefox's registered
 skipped when no private IPv4 interface is available. Physical shortcut capture and
 an actual Firefox Android device still require manual testing.
 
+The notification check exercises Firefox's registered **Alt+Shift+N** command with
+no phone settings. It verifies the selected text reaches the Google fixture and the
+Russian result produces a `notifications.onShown` event, without opening or
+navigating tabs. API acceptance alone does not prove a notification was shown.
+The temporary test profile sets `alerts.useSystemBackend=false` to use Firefox's
+own popup on the test display. This keeps test notifications out of the desktop's
+notification queue; Xvfb alone does not isolate the desktop's D-Bus session. The
+operating system's notification backend and physical shortcut capture remain
+manual checks. Your Firefox profile is unchanged.
+
 Requirements: Python 3.10+, Node.js 24+, Firefox 156+, and a graphical display. On
 Linux without a display, install Xvfb and run from the project root:
 

@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "Translate in Context Menu",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"description": "Show a Russian translation of selected text directly in Firefox’s context menu.",
 	"permissions": ["menus", "storage", "activeTab", "scripting", "notifications"],
 	"commands": {
@@ -12,6 +12,10 @@
 		"paste-in-yandex": {
 			"suggested_key": { "default": "Alt+Shift+Y" },
 			"description": "Paste selected text into an open Yandex Translate tab"
+		},
+		"translate-in-notification": {
+			"suggested_key": { "default": "Alt+Shift+N" },
+			"description": "Show a Russian translation in a system notification"
 		}
 	},
 	"host_permissions": ["http://*/*", "https://*/*"],
