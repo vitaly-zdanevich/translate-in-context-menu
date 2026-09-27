@@ -1,8 +1,8 @@
 {
 	"manifest_version": 3,
 	"name": "Translate in Context Menu",
-	"version": "1.1.0",
-	"description": "Show a Russian translation of selected text directly in Firefox’s context menu.",
+	"version": "1.2.0",
+	"description": "Translate selected text into your chosen language directly in Firefox’s context menu.",
 	"permissions": ["menus", "storage", "activeTab", "scripting", "notifications"],
 	"commands": {
 		"translate-on-phone": {
@@ -15,7 +15,7 @@
 		},
 		"translate-in-notification": {
 			"suggested_key": { "default": "Alt+Shift+N" },
-			"description": "Show a Russian translation in a system notification"
+			"description": "Show a translation in a system notification"
 		}
 	},
 	"host_permissions": ["http://*/*", "https://*/*"],

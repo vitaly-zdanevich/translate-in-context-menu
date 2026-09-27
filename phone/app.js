@@ -20,12 +20,16 @@ function showTranslation(event) {
 	try {
 		const message = JSON.parse(event.data);
 		if (!message || typeof message !== 'object' || Array.isArray(message)
-			|| ['source', 'translation', 'error'].some(key => message[key] != null && typeof message[key] !== 'string')) {
+			|| ['source', 'translation', 'error'].some(key => message[key] != null && typeof message[key] !== 'string')
+			|| (Object.hasOwn(message, 'targetLanguage') && (typeof message.targetLanguage !== 'string'
+				|| !/^[a-z]{2,3}(?:-[A-Za-z]{2,4})?$/u.test(message.targetLanguage)))) {
 			throw new Error('Invalid translation update');
 		}
 		original.textContent = message.source ?? '';
+		translation.lang = message.translation ? message.targetLanguage ?? 'ru' : 'en';
+		translation.dir = 'auto';
 		translation.textContent = message.translation
-			|| (message.error ? '' : message.source ? 'Переводим…' : 'Select text on your computer and use the shortcut.');
+			|| (message.error ? '' : message.source ? 'Translating…' : 'Select text on your computer and use the shortcut.');
 		translationError.textContent = message.error ?? '';
 		const date = new Date(message.updatedAt ?? NaN);
 		messageTime.textContent = Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString();
@@ -91,6 +95,7 @@ forgetButton.addEventListener('click', () => {
 	}
 	original.textContent = '';
 	translation.textContent = '';
+	translation.lang = 'en';
 	translationError.textContent = '';
 	messageTime.textContent = '';
 	messageTime.dateTime = '';

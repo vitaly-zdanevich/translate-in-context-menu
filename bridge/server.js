@@ -4,6 +4,7 @@ import http from 'node:http';
 import { isIP } from 'node:net';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { LANGUAGES } from '../src/languages.js';
 
 const PROJECT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BODY_LIMIT = 128 * 1024;
@@ -74,7 +75,7 @@ function readBody(request) {
 /** Validate the relay message and discard no fields silently. */
 function translationState(payload) {
 	if (!payload || typeof payload !== 'object' || Array.isArray(payload)
-		|| Object.keys(payload).some(key => !['source', 'translation', 'error'].includes(key))) {
+		|| Object.keys(payload).some(key => !['source', 'translation', 'error', 'targetLanguage'].includes(key))) {
 		return null;
 	}
 	const { source, translation, error = '' } = payload;
@@ -82,7 +83,12 @@ function translationState(payload) {
 		|| [...source].length > 5000 || [...translation].length > 20000 || [...error].length > 1000) {
 		return null;
 	}
-	return { source, translation, error, updatedAt: new Date().toISOString() };
+	const language = {};
+	if (Object.hasOwn(payload, 'targetLanguage')) {
+		if (!LANGUAGES.has(payload.targetLanguage)) return null;
+		language.targetLanguage = payload.targetLanguage;
+	}
+	return { source, translation, error, ...language, updatedAt: new Date().toISOString() };
 }
 
 /** Allow authenticated extension requests and the relay's own origin only. */

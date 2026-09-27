@@ -52,7 +52,7 @@ test('the notification shortcut shows the complete translation without changing 
 	app.settings.apiKey = '  google-test-key  ';
 	app.state.text = '  Hello\nworld  ';
 	await app.press();
-	assert.deepEqual(app.state.keys.flat(), ['apiKey']);
+	assert.deepEqual(app.state.keys.flat(), ['apiKey', 'targetLanguage']);
 	assert.deepEqual(app.state.queries, [{ active: true, currentWindow: true }]);
 	assert.deepEqual(app.state.reads[0].target, { tabId: 1, allFrames: true });
 	assert.equal(app.state.reads[0].func, readSelection);
@@ -60,12 +60,13 @@ test('the notification shortcut shows the complete translation without changing 
 	const [source, options] = app.state.calls[0];
 	assert.equal(source, 'Hello\nworld');
 	assert.equal(options.apiKey, 'google-test-key');
+	assert.equal(options.targetLanguage, 'ru');
 	assert.ok(options.signal instanceof AbortSignal);
 	assert.deepEqual(app.state.notices, [{
 		id: 'selection-translation',
 		type: 'basic',
 		iconUrl: 'moz-extension://test/icons/translate.svg',
-		title: 'Перевод на русский',
+		title: 'Translation — Russian',
 		message: translation,
 	}]);
 	assert.equal(app.state.opened, 0);
@@ -174,6 +175,39 @@ test('removing the API key clears cached translations even if the same key is re
 	await app.press();
 	assert.equal(app.state.calls.length, 2);
 	assert.equal(app.state.opened, 1);
+});
+
+test('notifications use the chosen language and cache translations separately for each target', async () => {
+	const app = setup(async (_source, { targetLanguage }) => targetLanguage === 'de' ? 'Hallo' : 'Привет');
+	await app.press();
+	app.settings.targetLanguage = 'de';
+	await app.press();
+	assert.equal(app.state.calls.at(-1)[1].targetLanguage, 'de');
+	assert.equal(app.state.notices.at(-1).title, 'Translation — German');
+	assert.equal(app.state.notices.at(-1).message, 'Hallo');
+	app.settings.targetLanguage = 'ru';
+	await app.press();
+	assert.equal(app.state.calls.length, 2);
+	assert.equal(app.state.notices.at(-1).title, 'Translation — Russian');
+	assert.equal(app.state.notices.at(-1).message, 'Привет');
+});
+
+test('an unfinished notification cannot replace a translation in the newly chosen language', async () => {
+	const first = Promise.withResolvers();
+	const started = Promise.withResolvers();
+	const app = setup(async (_source, { targetLanguage }) => {
+		if (targetLanguage === 'ru') { started.resolve(); return first.promise; }
+		return 'Hallo';
+	});
+	const old = app.press();
+	await started.promise;
+	app.settings.targetLanguage = 'de';
+	await app.press();
+	first.resolve('Привет');
+	await old;
+	assert.deepEqual(app.state.notices.map(({ title, message }) => ({ title, message })), [
+		{ title: 'Translation — German', message: 'Hallo' },
+	]);
 });
 
 test('Google errors are reported and retried instead of being cached', async () => {

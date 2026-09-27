@@ -15,7 +15,7 @@
 
 ![Translate in Context Menu icon](icons/translate.svg)
 
-A small Firefox extension that shows a Russian translation of selected text in the native context menu, in a system notification with **Alt+Shift+N**, or on another device with **Alt+Shift+T**. Those translations use the official [Google Cloud Translation Basic API (v2)](https://docs.cloud.google.com/translate/docs/reference/rest/v2/translate), detect the source language automatically, and translate into Russian with your Google Cloud API key. **Alt+Shift+Y** instead pastes the selected text into an existing Yandex Translate tab, without an API key.
+A small Firefox extension that shows a translation of selected text in the native context menu, in a system notification with **Alt+Shift+N**, or on another device with **Alt+Shift+T**. Those translations use the official [Google Cloud Translation Basic API (v2)](https://docs.cloud.google.com/translate/docs/reference/rest/v2/translate), detect the source language automatically, and translate into your chosen language with your Google Cloud API key. Russian is the default. **Alt+Shift+Y** instead pastes the selected text into an existing Yandex Translate tab, without an API key.
 
 Modern JavaScript modules, native Firefox APIs, and `fetch`. No JavaScript dependencies, bundler, or installation of npm packages.
 
@@ -27,16 +27,18 @@ GitHub does not allow clickable `about:` links. Copy these addresses into Firefo
 2. Paste `about:debugging#/runtime/this-firefox` into the address bar and press Enter.
 3. Click **Load Temporary Add-on…** and select this folder’s `manifest.json`.
 4. Allow website access if Firefox asks. Automatic translation requires access to the page’s selection before you click a menu item.
-5. Open `about:addons`, select **Translate in Context Menu**, and open **Preferences**. Paste your Google Cloud Translation API key and click **Save**.
-6. Select text on an HTTP or HTTPS page and open its context menu. **Переводим…** changes to the Russian translation when it arrives.
+5. Open `about:addons`, select **Translate in Context Menu**, and open **Preferences**. Choose the target language under **Translate to**, then paste your Google Cloud Translation API key and click **Save**.
+6. Select text on an HTTP or HTTPS page and open its context menu. **Translating…** changes to the translation when it arrives.
 
-The menu item stays clickable, including during loading and errors. Clicking it opens **Google Translate** in a new tab with the selected text and Russian as the target language. Long translations are shortened to fit the menu; the display on another device shows the full translation. The API key and device connection are managed in Firefox’s add-on Preferences.
+The menu item stays clickable, including during loading and errors. Clicking it opens **Google Translate** in a new tab with the selected text and your chosen target language. Long translations are shortened to fit the menu; the display on another device shows the full translation. The API key and device connection are managed in Firefox’s add-on Preferences.
+
+The **Translate to** dropdown saves automatically and applies to all Google translations, including notifications, the second-screen display, and Google Translate links. Its 194 entries are bundled from [Google’s NMT language list](https://docs.cloud.google.com/translate/docs/languages#neural_machine_translation_model), checked September 27, 2026. Listing or choosing a language makes no network request and needs no API key. Language names and extension labels are in English; translated content uses the selected language. Yandex continues to use its own settings.
 
 Temporary add-ons are removed when Firefox closes. After editing the code, click **Reload** on the extension in `about:debugging`. See [Mozilla’s temporary installation guide](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/).
 
 ## Show a system notification
 
-Select text on a webpage in Firefox and press **Alt+Shift+N**. The extension translates it into Russian using your saved Google API key and shows the result in a native system notification. No local server or second device is needed. Your working tab keeps focus, and the clipboard stays unchanged.
+Select text on a webpage in Firefox and press **Alt+Shift+N**. The extension translates it into your chosen language using your saved Google API key and shows the result in a native system notification. No local server or second device is needed. Your working tab keeps focus, and the clipboard stays unchanged.
 
 Firefox and your operating system control the notification’s appearance, size, and duration. Long translations may be shortened. Firefox’s [notification options](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/notifications/NotificationOptions) provide a title, message, and icon, with no width, height, or CSS settings. The shortcut also reports setup and translation errors through notifications.
 
@@ -44,7 +46,7 @@ Change the shortcut in **about:addons → gear menu → Manage Extension Shortcu
 
 ## Paste into an open Yandex Translate window
 
-1. Open [Yandex Translate](https://translate.yandex.ru/) in another window of the same Firefox profile. Wait for its text field to become ready and select Russian as the target language.
+1. Open [Yandex Translate](https://translate.yandex.ru/) in another window of the same Firefox profile. Wait for its text field to become ready and choose the target language there.
 2. Select text on a webpage in your working Firefox window.
 3. Press **Alt+Shift+Y**. The extension replaces the contents of Yandex’s `#textarea` and triggers its input handler so Yandex translates the new text.
 
@@ -75,7 +77,7 @@ Use your computer’s actual address in place of the example. Setup preserves th
 
 1. Open the **Phone pairing URL** printed by the server in a browser on the other device. Alternatively, open the base address, such as `http://192.168.1.42:8787`, and paste the printed pairing token. The page should say **Connected**.
 2. In the desktop extension’s **Preferences → Phone display**, save the printed **Extension relay URL** and **Extension pairing token**. Your Google API key stays in its separate field on the desktop.
-3. Select text on a webpage in desktop Firefox and press **Alt+Shift+T**. The other device shows the original text and Russian translation. The shortcut works while Firefox is focused, including selections in ordinary text inputs; password fields are excluded.
+3. Select text on a webpage in desktop Firefox and press **Alt+Shift+T**. The other device shows the original text and its translation into your chosen language. The shortcut works while Firefox is focused, including selections in ordinary text inputs; password fields are excluded.
 
 Change the shortcut in **about:addons → gear menu → Manage Extension Shortcuts** if your desktop intercepts it. The display follows `prefers-color-scheme`: dark mode uses background `#000` and text `#bbb`.
 
@@ -116,7 +118,7 @@ The $10 credit is shared across Cloud Translation Basic and Advanced and does no
 - The key is stored as plain text in this Firefox profile using `browser.storage.local`; it is not encrypted or synced. The password input only masks its display. The extension contains no bundled credentials. Remove the saved key in Preferences or revoke it in Google Cloud Credentials.
 - Clicking the menu opens `translate.google.com` with the selection in the URL, so the text can appear in that tab’s browser history. This is separate from the Cloud API request.
 - HTTP/HTTPS host access is required because Firefox exposes the selection in [`menus.onShown`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/menus/onShown) only with host permission. The shortcuts run a small selection reader in the active tab’s frames using [`scripting.executeScript`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/scripting/executeScript). The Yandex shortcut also writes to its destination’s text field. Neither monitors typing nor runs automatically on page loads. There are no analytics.
-- Successful menu, notification, and second-screen translations are cached in separate in-memory maps without entry limits. Firefox clears them when it unloads the background page or the extension stops. Each cache is cleared when its next translation uses a different API key. The extension, relay, and display page save no translation history to disk; the operating system may retain notifications in its notification history.
+- Successful menu, notification, and second-screen translations are cached in separate in-memory maps without entry limits. Each selection and target language has its own entry. Firefox clears them when it unloads the background page or the extension stops. Each cache is cleared when its next translation uses a different API key. The extension, relay, and display page save no translation history to disk; the operating system may retain notifications in its notification history.
 - Google API translations are limited to 5,000 Unicode characters. Requests time out after 10 seconds. Closing the menu cancels the pending request; failures appear in the menu and can be retried by reopening it.
 
 API keys do not remove Google Cloud quotas. The menu handles HTTP 429 and HTTP 403 errors; Google documents quota failures as HTTP 403. Check the key, API enablement, billing, and [quota settings](https://docs.cloud.google.com/translate/quotas) if requests fail.
@@ -146,13 +148,13 @@ python3 tests/e2e/firefox.py
 python3 scripts/build.py
 ```
 
-Tests use mock Google responses and do not send selected text to Google. Unit and local integration tests cover translation, menu behavior, native notifications, preferences, shortcut cancellation, Yandex tab selection and input events, pairing, relay authentication, SSE reconnects, and display rendering. Automated Yandex tests use mock tabs and fields without contacting Yandex. See [the Firefox end-to-end test instructions](tests/e2e/README.md) for its browser and display requirements.
+Tests use mock Google responses and do not send selected text to Google. Unit and local integration tests cover translation, menu behavior, native notifications, language preferences and caching, shortcut cancellation, Yandex tab selection and input events, pairing, relay authentication, SSE reconnects, and display rendering, including right-to-left text. Automated Yandex tests use mock tabs and fields without contacting Yandex. See [the Firefox end-to-end test instructions](tests/e2e/README.md) for its browser and display requirements.
 
 [GitHub Actions](https://github.com/vitaly-zdanevich/translate-in-context-menu/actions/workflows/tests.yml) runs coverage, Firefox integration tests, and packaging on pushes to `main`, version tags, and pull requests. CI uses Node.js 24 and the latest stable Firefox; all JavaScript actions also run on Node.js 24. Successful runs attach the extension ZIP as the `firefox-extension` artifact. No API keys or pairing credentials are required.
 
 The separate [SonarCloud workflow](.github/workflows/build.yml) analyzes the production code and tests using the repository’s `SONAR_TOKEN` secret. `npm run test:coverage` also writes `lcov.info` using Node’s built-in reporter, which SonarCloud imports without additional dependencies. See the [project dashboard](https://sonarcloud.io/dashboard?id=vitaly-zdanevich_translate-in-context-menu) and [SonarCloud coverage documentation](https://docs.sonarsource.com/sonarqube-cloud/enriching/test-coverage/javascript-typescript-test-coverage). Fork pull requests run the regular tests; the SonarCloud job is skipped because they cannot access the secret.
 
-Packaging writes `dist/translate-in-context-menu-1.1.0.zip` with only the manifest, extension source files, and icon. Keep this source folder to run the local relay; its files and private pairing config are not bundled in the extension. A normal, permanent Firefox installation requires [Mozilla signing](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/); the extension supports temporary loading without signing.
+Packaging writes `dist/translate-in-context-menu-1.2.0.zip` with only the manifest, extension source files, and icon. Keep this source folder to run the local relay; its files and private pairing config are not bundled in the extension. A normal, permanent Firefox installation requires [Mozilla signing](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/); the extension supports temporary loading without signing.
 
 Firefox’s [`menus.refresh()`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/menus/refresh) updates the open menu. [Background ES modules](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/background) keep the source directly runnable without a build tool.
 

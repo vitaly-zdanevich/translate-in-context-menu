@@ -11,9 +11,13 @@
 		}
 	</style>
 	<script type='module' src='options.js'></script>
+	<script type='module' src='language-options.js'></script>
 	<script type='module' src='phone-options.js'></script>
 </head>
 <body>
+	<p><label for='target-language'>Translate to</label> <select id='target-language' aria-describedby='language-help' disabled></select></p>
+	<p id='language-help'>Saved automatically. Used for the context menu, system notifications, the second-screen display, and Google Translate links. Source language is detected automatically. Yandex uses its own language settings.</p>
+	<p id='language-status' role='status'></p>
 	<form id='settings'>
 		<fieldset id='controls' disabled>
 			<label for='api-key'>Google Cloud Translation API key</label>
@@ -38,7 +42,7 @@
 	</ul>
 	<p>Usage beyond the free allowance is billed; see <a href='https://cloud.google.com/products/translate/pricing' target='_blank' rel='noreferrer'>Google’s official pricing</a>.</p>
 	<h2>System notification</h2>
-	<p>Select text on a webpage and press <strong>Alt+Shift+N</strong> to show its Russian translation in a system notification using your Google API key. Firefox and your operating system control the appearance and duration; long translations may be shortened. Change the shortcut in <strong>about:addons → gear menu → Manage Extension Shortcuts</strong>.</p>
+	<p>Select text on a webpage and press <strong>Alt+Shift+N</strong> to show its translation in a system notification using your Google API key and selected target language. Firefox and your operating system control the appearance and duration; long translations may be shortened. Change the shortcut in <strong>about:addons → gear menu → Manage Extension Shortcuts</strong>.</p>
 	<h2>Phone display</h2>
 	<p>Keep the phone display open on the same local network. Select text in Firefox and press <strong>Alt+Shift+T</strong>. You can change this shortcut in Firefox’s Manage Extension Shortcuts screen.</p>
 	<form id='phone-settings'>

@@ -59,7 +59,7 @@ test('installation and browser startup create one enabled selection menu', async
 	assert.equal(created.length, 2);
 	assert.deepEqual(created[0], {
 		id: MENU_ID,
-		title: 'Перевести на русский',
+		title: 'Translate selection',
 		contexts: ['selection'],
 		documentUrlPatterns: ['http://*/*', 'https://*/*'],
 		enabled: true,
@@ -70,16 +70,16 @@ test('opening a menu shows loading then refreshes it with the translation', asyn
 	const app = setup(async (source, { apiKey }) => {
 		assert.equal(source, 'Hello');
 		assert.equal(apiKey, 'test-api-key');
-		assert.equal(app.updates.at(-1).title, 'Переводим…');
+		assert.equal(app.updates.at(-1).title, 'Translating…');
 		assert.equal(app.updates.at(-1).enabled, true);
 		return 'Привет';
 	});
 	await app.show(' Hello ');
-	assert.deepEqual(app.updates.map(item => item.title), ['Переводим…', 'Привет']);
+	assert.deepEqual(app.updates.map(item => item.title), ['Translating…', 'Привет']);
 	assert.equal(app.updates.at(-1).enabled, true);
 	assert.equal(app.stats.refreshes, 2);
 	await app.hide();
-	assert.equal(app.updates.at(-1).title, 'Перевести на русский');
+	assert.equal(app.updates.at(-1).title, 'Translate selection');
 	assert.equal(app.updates.at(-1).enabled, true);
 	assert.equal(app.stats.refreshes, 2, 'a hidden menu is not refreshed');
 });
@@ -89,7 +89,7 @@ test('missing API key points to preferences and still opens Google Translate on 
 	delete app.settings.apiKey;
 	await app.show('Hello');
 	assert.deepEqual(app.updates.at(-1), {
-		title: 'Укажите API-ключ в настройках расширения', enabled: true,
+		title: 'Set your API key in Preferences.', enabled: true,
 	});
 	await app.browser.menus.onClicked.fire({ menuItemId: MENU_ID, selectionText: 'Hello' });
 	assert.deepEqual(app.tabs, [{ url: 'https://translate.google.com/?sl=auto&tl=ru&text=Hello&op=translate' }]);
@@ -122,13 +122,49 @@ test('clicks for other menu items or missing selections do not open a tab', asyn
 	assert.equal(app.tabs.length, 0);
 });
 
+test('menu translations are cached separately per target and Google links read the current preference', async () => {
+	const targets = [];
+	const app = setup(async (_source, { targetLanguage }) => {
+		targets.push(targetLanguage);
+		return targetLanguage === 'fr' ? 'Bonjour' : 'Привет';
+	});
+	await app.show('Hello');
+	app.settings.targetLanguage = 'fr';
+	await app.show('Hello');
+	assert.equal(app.updates.at(-1).title, 'Bonjour');
+	app.settings.targetLanguage = 'ru';
+	await app.show('Hello');
+	assert.equal(app.updates.at(-1).title, 'Привет');
+	assert.deepEqual(targets, ['ru', 'fr']);
+	app.settings.targetLanguage = 'zh-TW';
+	await app.browser.menus.onClicked.fire({ menuItemId: MENU_ID, selectionText: 'Hello' });
+	assert.equal(new URL(app.tabs.at(-1).url).searchParams.get('tl'), 'zh-TW');
+});
+
+test('a late menu translation cannot overwrite a newer target for the same selection', async () => {
+	const first = deferred();
+	const started = deferred();
+	const app = setup(async (_source, { targetLanguage }) => {
+		if (targetLanguage === 'ru') { started.resolve(); return first.promise; }
+		return 'Bonjour';
+	});
+	const old = app.show('Hello');
+	await started.promise;
+	app.settings.targetLanguage = 'fr';
+	await app.show('Hello');
+	first.resolve('Привет');
+	await old;
+	assert.equal(app.updates.at(-1).title, 'Bonjour');
+	assert.ok(!app.updates.some(item => item.title === 'Привет'));
+});
+
 test('clicking while a translation is loading opens Google Translate immediately', async () => {
 	const started = deferred();
 	const reply = deferred();
 	const app = setup(() => { started.resolve(); return reply.promise; });
 	const opening = app.show('Hello');
 	await started.promise;
-	assert.deepEqual(app.updates.at(-1), { title: 'Переводим…', enabled: true });
+	assert.deepEqual(app.updates.at(-1), { title: 'Translating…', enabled: true });
 	await app.browser.menus.onClicked.fire({ menuItemId: MENU_ID, selectionText: 'Hello' });
 	assert.equal(new URL(app.tabs[0].url).searchParams.get('text'), 'Hello');
 	reply.resolve('Привет');
@@ -155,7 +191,7 @@ test('removing the key prevents previously cached translations from being shown'
 	app.settings.apiKey = '';
 	await app.show('Hello');
 	assert.equal(calls, 1);
-	assert.match(app.updates.at(-1).title, /Укажите API-ключ/);
+	assert.match(app.updates.at(-1).title, /Set your API key/);
 	assert.equal(app.updates.at(-1).enabled, true);
 });
 
@@ -167,7 +203,7 @@ test('closing the menu while settings load prevents a translation request', asyn
 	await app.hide();
 	pending.resolve({ apiKey: 'test-api-key' });
 	await opening;
-	assert.deepEqual(app.updates.map(item => item.title), ['Перевести на русский']);
+	assert.deepEqual(app.updates.map(item => item.title), ['Translate selection']);
 });
 
 test('menus without the extension item never translate', async () => {
@@ -181,7 +217,7 @@ test('missing host permission or empty selection does not send a request', async
 	await app.show(undefined);
 	await app.show(' \n ');
 	assert.equal(app.updates.length, 2);
-	assert.match(app.updates[0].title, /Нет доступа к выделению/);
+	assert.match(app.updates[0].title, /Cannot access the selection/);
 	assert.ok(app.updates.every(item => item.enabled));
 });
 
@@ -237,7 +273,7 @@ test('closing the menu aborts work and discards a late response', async () => {
 	assert.ok(signal.aborted);
 	reply.resolve('Привет');
 	await opening;
-	assert.deepEqual(app.updates.map(item => item.title), ['Переводим…', 'Перевести на русский']);
+	assert.deepEqual(app.updates.map(item => item.title), ['Translating…', 'Translate selection']);
 });
 
 test('a stale response cannot replace a newer selection in another menu', async () => {
@@ -282,7 +318,7 @@ test('closing while the loading label updates prevents both fetch and refresh', 
 	const finished = deferred();
 	const app = setup(() => assert.fail('No request expected'));
 	context.mock.method(app.browser.menus, 'update', async (_id, { title }) => {
-		if (title === 'Переводим…') {
+		if (title === 'Translating…') {
 			started.resolve();
 			await finished.promise;
 		}

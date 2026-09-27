@@ -98,11 +98,12 @@ class FirefoxContextMenuTest(unittest.TestCase):
 		cls.fixture_url = f'http://127.0.0.1:{cls.server.server_port}/selection.html'
 
 	def setUp(self):
-		'''Save a fake key through the production preferences before each check.'''
+		'''Restore Russian and a fake key through preferences before each check.'''
 		self.embedded_preferences = False
 		self.navigate(self.options_url)
 		self.wait_for_preferences()
 		self.save_key()
+		self.save_language('ru')
 		self.navigate(self.fixture_url)
 
 	def navigate(self, url):
@@ -116,6 +117,9 @@ class FirefoxContextMenuTest(unittest.TestCase):
 		self.wait_for(lambda: self.preferences_script('''
 			return document.getElementById('controls')?.disabled === false;
 		'''), 'the API-key preferences to load')
+		self.wait_for(lambda: self.preferences_script('''
+			return document.getElementById('target-language')?.disabled === false;
+		'''), 'the target language preferences to load')
 
 	def save_key(self):
 		'''Submit the real form with a fake credential and wait for persistence.'''
@@ -136,6 +140,17 @@ class FirefoxContextMenuTest(unittest.TestCase):
 			return frame.browsingContext.currentWindowGlobal.getActor('MarionetteCommands')
 				.executeScript(arguments[0], [], { sandboxName: 'default', newSandbox: true, timeout: 10000 });
 		''', source, context='chrome')
+
+	def save_language(self, language):
+		'''Change the native dropdown and wait until its preference is saved.'''
+		self.preferences_script(f'''
+			const select = document.getElementById('target-language');
+			select.value = {json.dumps(language)};
+			select.dispatchEvent(new Event('change', {{ bubbles: true }}));
+		''')
+		self.wait_for(lambda: self.preferences_script('''
+			return document.getElementById('language-status').textContent === 'Target language saved.';
+		'''), 'the target language to save')
 
 	def remove_key(self):
 		'''Remove the fake credential through the visible preferences button.'''
@@ -241,7 +256,7 @@ class FirefoxContextMenuTest(unittest.TestCase):
 	def test_translation_in_the_open_menu(self):
 		'''A selected phrase changes loading text into Russian in the open menu.'''
 		self.open_menu('greeting')
-		self.wait_for_label('Переводим…')
+		self.wait_for_label('Translating…')
 		item = self.wait_for_label('Привет, мир!')
 		self.assertFalse(item['disabled'])
 		self.close_menu()
@@ -249,10 +264,10 @@ class FirefoxContextMenuTest(unittest.TestCase):
 	def test_dismissed_request_cannot_replace_new_translation(self):
 		'''A late response for a dismissed menu cannot overwrite a new selection.'''
 		self.open_menu('slow')
-		self.wait_for_label('Переводим…')
+		self.wait_for_label('Translating…')
 		self.close_menu()
 		self.open_menu('second')
-		self.wait_for_label('Переводим…')
+		self.wait_for_label('Translating…')
 		self.wait_for_label('Доброе утро!')
 		# Wait beyond the deliberately uncancellable first request's response.
 		time.sleep(0.9)
@@ -262,8 +277,8 @@ class FirefoxContextMenuTest(unittest.TestCase):
 	def test_network_error_is_visible_in_the_menu(self):
 		'''Network errors replace the loading label without opening another UI.'''
 		self.open_menu('failure')
-		self.wait_for_label('Переводим…')
-		self.wait_for_label('Не удалось подключиться к Google Translate. Проверьте соединение.')
+		self.wait_for_label('Translating…')
+		self.wait_for_label('Could not connect to Google Translate. Check your connection.')
 		self.close_menu()
 
 	def test_no_selection_has_no_translation_item(self):
@@ -280,7 +295,7 @@ class FirefoxContextMenuTest(unittest.TestCase):
 		self.remove_key()
 		self.navigate(self.fixture_url)
 		self.open_menu('greeting')
-		item = self.wait_for_label('Укажите API-ключ в настройках расширения')
+		item = self.wait_for_label('Set your API key in Preferences.')
 		self.assertFalse(item['disabled'])
 		self.close_menu()
 		self.browser.script('BrowserAddonUI.openAddonsMgr(arguments[0]);',
@@ -323,7 +338,7 @@ class FirefoxContextMenuTest(unittest.TestCase):
 		''', extension_id, context='chrome')
 		self.assertEqual(state, 'stopped')
 		self.open_menu('second')
-		self.wait_for_label('Переводим…')
+		self.wait_for_label('Translating…')
 		self.wait_for_label('Доброе утро!')
 		self.close_menu()
 
@@ -334,6 +349,10 @@ class FirefoxContextMenuTest(unittest.TestCase):
 
 	def test_click_opens_google_translate_for_the_selection(self):
 		'''A loading menu remains clickable and supplies the selected text to Google.'''
+		self.check_google_translate_click('ru', 'Translating…')
+
+	def check_google_translate_click(self, language, label):
+		'''Check the selected target in Google's URL without opening its website.'''
 		self.browser.script('''
 			window.e2eOriginalAddTab = gBrowser.addTab;
 			window.e2eTranslationUrl = '';
@@ -347,14 +366,14 @@ class FirefoxContextMenuTest(unittest.TestCase):
 		''', context='chrome')
 		try:
 			self.open_menu('greeting')
-			item = self.wait_for_label('Переводим…')
+			item = self.wait_for_label(label)
 			self.assertFalse(item['disabled'])
 			self.click_menu_item(item)
 			url = self.wait_for(lambda: self.browser.script('return window.e2eTranslationUrl;', context='chrome'),
 				'the Google Translate tab request')
 			self.assertEqual(urlparse(url).netloc, 'translate.google.com')
 			self.assertEqual(parse_qs(urlparse(url).query), {
-				'sl': ['auto'], 'tl': ['ru'], 'text': ['Hello, world!'], 'op': ['translate'],
+				'sl': ['auto'], 'tl': [language], 'text': ['Hello, world!'], 'op': ['translate'],
 			})
 		finally:
 			self.browser.script('''
@@ -363,6 +382,31 @@ class FirefoxContextMenuTest(unittest.TestCase):
 				delete window.e2eOriginalAddTab;
 				delete window.e2eTranslationUrl;
 			''', context='chrome')
+
+	def test_preferences_target_language_changes_cached_translation(self):
+		'''A saved target persists and changes both cached results and Google's link.'''
+		self.open_menu('greeting')
+		self.wait_for_label('Привет, мир!')
+		self.close_menu()
+		self.navigate(self.options_url)
+		self.wait_for_preferences()
+		self.assertEqual(self.preferences_script("return document.getElementById('target-language').value;"), 'ru')
+		before = self.request_count()
+		self.save_language('fr')
+		self.navigate(self.options_url)
+		self.wait_for_preferences()
+		self.assertEqual(self.preferences_script("return document.getElementById('target-language').value;"), 'fr')
+		self.assertEqual(self.request_count(), before)
+		self.navigate(self.fixture_url)
+		self.open_menu('greeting')
+		self.wait_for_label('Translating…')
+		self.wait_for_label('Bonjour, monde!')
+		self.close_menu()
+		self.navigate(self.options_url)
+		self.wait_for_preferences()
+		self.assertEqual(self.request_count(), before + 1)
+		self.navigate(self.fixture_url)
+		self.check_google_translate_click('fr', 'Bonjour, monde!')
 
 	def check_phone_hotkey(self, host):
 		'''Send a real keyboard shortcut through the extension and HTTP/SSE relay.'''
@@ -500,7 +544,7 @@ class FirefoxContextMenuTest(unittest.TestCase):
 		self.assertEqual(notification['e2eNotification'], 'Привет, мир!')
 		options = notification['e2eNotificationOptions']
 		self.assertEqual(options['type'], 'basic')
-		self.assertEqual(options['title'], 'Перевод на русский')
+		self.assertEqual(options['title'], 'Translation — Russian')
 		self.assertEqual(options['message'], 'Привет, мир!')
 		self.assertTrue(options['iconUrl'].endswith('/icons/translate.svg'))
 		self.assertEqual(notification['e2eRequestCount'], before + 1)

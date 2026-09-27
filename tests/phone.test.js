@@ -190,6 +190,47 @@ test('phone renders source and translation literally and shows the update time',
 	assert.equal(app.elements['translation-error'].textContent, '');
 });
 
+test('phone marks translated text with its language and lets the browser choose text direction', () => {
+	const app = setup({ saved: { pairingToken: token } });
+	const stream = app.streams[0];
+	for (const [targetLanguage, translation] of [['ar', 'مرحبا <script>alert(1)</script>'], ['zh-TW', '你好']]) {
+		stream.message({ source: 'Hello', translation, targetLanguage });
+		assert.equal(app.elements.translation.textContent, translation);
+		assert.equal(app.elements.translation.lang, targetLanguage);
+		assert.equal(app.elements.translation.dir, 'auto');
+	}
+	stream.message({ source: 'Hello', translation: 'Привет' });
+	assert.equal(app.elements.translation.lang, 'ru', 'older relay messages still contain Russian translations');
+});
+
+test('phone rejects malformed language metadata without replacing the current translation', () => {
+	const app = setup({ saved: { pairingToken: token } });
+	const stream = app.streams[0];
+	stream.message({ source: 'Hello', translation: 'مرحبا', targetLanguage: 'ar' });
+	for (const targetLanguage of [null, 7, false, [], {}, '', ' ar ', 'ar<script>']) {
+		stream.message({ source: 'Replace', translation: 'Invalid', targetLanguage });
+		assert.ok(app.elements['translation-error'].textContent);
+		assert.equal(app.elements.translation.textContent, 'مرحبا');
+		assert.equal(app.elements.translation.lang, 'ar');
+	}
+});
+
+test('phone resets translation language for loading, empty, error and disconnected states', () => {
+	const app = setup({ saved: { pairingToken: token } });
+	const stream = app.streams[0];
+	stream.message({ source: 'Hello', translation: 'مرحبا', targetLanguage: 'ar' });
+	stream.message({ source: 'Next', translation: '', targetLanguage: 'ar' });
+	assert.equal(app.elements.translation.lang, 'en', 'the loading message is written in English');
+	stream.message({ source: '', translation: '', targetLanguage: 'ar' });
+	assert.equal(app.elements.translation.lang, 'en', 'the initial instructions are written in English');
+	stream.message({ source: 'Hello', translation: '', error: 'Unavailable', targetLanguage: 'ar' });
+	assert.equal(app.elements.translation.lang, 'en');
+	stream.message({ source: 'Hello', translation: 'مرحبا', targetLanguage: 'ar' });
+	app.forget();
+	assert.equal(app.elements.translation.lang, 'en');
+	assert.equal(app.elements.translation.textContent, '');
+});
+
 test('phone reports reconnection and recovers when the same stream opens again', () => {
 	const app = setup({ saved: { pairingToken: token } });
 	const stream = app.streams[0];
@@ -289,7 +330,7 @@ test('phone displays the newly selected source while its translation is pending'
 		updatedAt: '2026-09-21T10:00:00.000Z',
 	});
 	assert.equal(app.elements.original.textContent, 'A new selection');
-	assert.equal(app.elements.translation.textContent, 'Переводим…');
+	assert.equal(app.elements.translation.textContent, 'Translating…');
 	assert.equal(app.elements['translation-error'].textContent, '');
 	stream.message({ source: 'A new selection', translation: 'Новое выделение', error: '' });
 	assert.equal(app.elements.translation.textContent, 'Новое выделение');

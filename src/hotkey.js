@@ -1,5 +1,6 @@
 import { MAX_TEXT_LENGTH, normalizeText, translate } from './translate.js';
 import { normalizeServerUrl, publishTranslation } from './bridge-client.js';
+import { normalizeTargetLanguage } from './languages.js';
 
 /** Read the selection in the focused frame, including ordinary text inputs. */
 export function readSelection() {
@@ -44,7 +45,7 @@ export function registerHotkey(browser, translateSelection = translate, publish 
 		const request = new AbortController();
 		currentRequest = request;
 		try {
-			const settings = await browser.storage.local.get(['apiKey', 'phoneServerUrl', 'phoneToken']);
+			const settings = await browser.storage.local.get(['apiKey', 'targetLanguage', 'phoneServerUrl', 'phoneToken']);
 			if (currentRequest !== request) return;
 			if (!normalizeText(settings.apiKey) || !settings.phoneServerUrl || !settings.phoneToken) {
 				await browser.runtime.openOptionsPage();
@@ -52,6 +53,7 @@ export function registerHotkey(browser, translateSelection = translate, publish 
 				return;
 			}
 			settings.phoneServerUrl = normalizeServerUrl(settings.phoneServerUrl);
+			const targetLanguage = normalizeTargetLanguage(settings.targetLanguage);
 			const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
 			if (currentRequest !== request) return;
 			if (!tab?.id || !/^https?:\/\//u.test(tab.url ?? '')) {
@@ -65,26 +67,27 @@ export function registerHotkey(browser, translateSelection = translate, publish 
 			if (!source) throw new Error('Select the text you want to translate before pressing the shortcut.');
 			if ([...source].length > MAX_TEXT_LENGTH) throw new Error(`Select at most ${MAX_TEXT_LENGTH} characters.`);
 			// Confirm the relay is reachable before making a potentially billable API request.
-			await send(settings, { source, translation: '', error: '' }, request);
+			await send(settings, { source, translation: '', error: '', targetLanguage }, request);
 			if (currentRequest !== request) return;
 			const apiKey = normalizeText(settings.apiKey);
 			if (cachedApiKey !== apiKey) {
 				cache.clear();
 				cachedApiKey = apiKey;
 			}
-			let translation = cache.get(source);
+			const cacheKey = JSON.stringify([targetLanguage, source]);
+			let translation = cache.get(cacheKey);
 			try {
 				if (!translation) {
-					translation = await translateSelection(source, { apiKey, signal: request.signal });
+					translation = await translateSelection(source, { apiKey, targetLanguage, signal: request.signal });
 					if (currentRequest !== request) return;
-					cache.set(source, translation);
+					cache.set(cacheKey, translation);
 				}
 			} catch (error) {
 				if (currentRequest !== request) return;
-				await send(settings, { source, translation: '', error: error.message }, request);
+				await send(settings, { source, translation: '', error: error.message, targetLanguage }, request);
 				throw error;
 			}
-			await send(settings, { source, translation, error: '' }, request);
+			await send(settings, { source, translation, error: '', targetLanguage }, request);
 		} catch (error) {
 			if (currentRequest !== request) return;
 			await notify(error instanceof TypeError

@@ -1,7 +1,8 @@
 import { menuTitle, normalizeText, translate } from './translate.js';
+import { normalizeTargetLanguage } from './languages.js';
 
 const MENU_ID = 'translate-to-russian';
-const DEFAULT_TITLE = 'Перевести на русский';
+const DEFAULT_TITLE = 'Translate selection';
 
 /**
  * Register the native Firefox menu and its event handlers.
@@ -43,12 +44,12 @@ export function registerMenu(browser, translateSelection = translate) {
 		try {
 			const source = normalizeText(info.selectionText);
 			if (!source) {
-				await update(request, 'Нет доступа к выделению — проверьте разрешения');
+				await update(request, 'Cannot access the selection. Check website permissions.');
 				return;
 			}
 
 			// Read on each opening so saved or removed keys take effect immediately.
-			const settings = await browser.storage.local.get('apiKey');
+			const settings = await browser.storage.local.get(['apiKey', 'targetLanguage']);
 			if (currentRequest !== request) return;
 			const apiKey = normalizeText(settings.apiKey);
 			if (apiKey !== cachedApiKey) {
@@ -56,17 +57,19 @@ export function registerMenu(browser, translateSelection = translate) {
 				cachedApiKey = apiKey;
 			}
 			if (!apiKey) {
-				await update(request, 'Укажите API-ключ в настройках расширения');
+				await update(request, 'Set your API key in Preferences.');
 				return;
 			}
 
-			let translation = cache.get(source);
+			const targetLanguage = normalizeTargetLanguage(settings.targetLanguage);
+			const cacheKey = JSON.stringify([targetLanguage, source]);
+			let translation = cache.get(cacheKey);
 			if (!translation) {
-				await update(request, 'Переводим…');
+				await update(request, 'Translating…');
 				if (currentRequest !== request) return;
-				translation = await translateSelection(source, { apiKey, signal: request.signal });
+				translation = await translateSelection(source, { apiKey, targetLanguage, signal: request.signal });
 				if (currentRequest !== request) return;
-				cache.set(source, translation);
+				cache.set(cacheKey, translation);
 			}
 
 			await update(request, menuTitle(translation));
@@ -77,11 +80,12 @@ export function registerMenu(browser, translateSelection = translate) {
 	}
 
 	/** Open Google Translate for the clicked selection, regardless of API progress. */
-	function onClicked(info) {
+	async function onClicked(info) {
 		if (info.menuItemId !== MENU_ID || !normalizeText(info.selectionText)) return;
+		const { targetLanguage } = await browser.storage.local.get('targetLanguage');
 		const url = new URL('https://translate.google.com/');
 		url.search = new URLSearchParams({
-			sl: 'auto', tl: 'ru', text: info.selectionText, op: 'translate',
+			sl: 'auto', tl: normalizeTargetLanguage(targetLanguage), text: info.selectionText, op: 'translate',
 		}).toString();
 		return browser.tabs.create({ url: url.href });
 	}

@@ -45,17 +45,29 @@ test('translation reads the official response and preserves literal text', async
 	assert.equal(await translate('Hello, world &amp; <all>!', { apiKey: API_KEY }), 'Привет, мир &amp; <все>!');
 });
 
+test('translation sends the selected language and preserves canonical regional codes', async context => {
+	const requests = [];
+	context.mock.method(globalThis, 'fetch', async (_url, options) => {
+		requests.push(JSON.parse(options.body));
+		return translatedResponse('Translation');
+	});
+	for (const targetLanguage of ['fr', 'zh-TW', 'mni-Mtei']) {
+		await translate('Hello', { apiKey: API_KEY, targetLanguage });
+		assert.equal(requests.at(-1).target, targetLanguage);
+	}
+});
+
 test('a missing or blank API key fails before sending a request', async context => {
 	const fetchMock = context.mock.method(globalThis, 'fetch', async () => translatedResponse());
-	await assert.rejects(translate('Hello'), /Добавьте API-ключ Google Cloud в настройках/);
-	await assert.rejects(translate('Hello', { apiKey: ' \t\n' }), /Добавьте API-ключ Google Cloud в настройках/);
+	await assert.rejects(translate('Hello'), /Set your Google Cloud API key in Preferences/);
+	await assert.rejects(translate('Hello', { apiKey: ' \t\n' }), /Set your Google Cloud API key in Preferences/);
 	assert.equal(fetchMock.mock.callCount(), 0);
 });
 
 test('empty and oversized selections fail before sending a request', async context => {
 	const fetchMock = context.mock.method(globalThis, 'fetch', async () => translatedResponse());
-	await assert.rejects(translate(' \n\t ', { apiKey: API_KEY }), /Выделите текст/);
-	await assert.rejects(translate('😀'.repeat(MAX_TEXT_LENGTH + 1), { apiKey: API_KEY }), /максимум 5000 символов/);
+	await assert.rejects(translate(' \n\t ', { apiKey: API_KEY }), /Select text/);
+	await assert.rejects(translate('😀'.repeat(MAX_TEXT_LENGTH + 1), { apiKey: API_KEY }), /maximum 5000 characters/);
 	assert.equal(fetchMock.mock.callCount(), 0);
 });
 
@@ -75,7 +87,7 @@ test('menu titles truncate at Unicode boundaries and add an ellipsis only when n
 
 test('HTTP rate limiting explains the Google Cloud quota', async context => {
 	context.mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 429 }));
-	await assert.rejects(translate('Hello', { apiKey: API_KEY }), /Квота Google Cloud исчерпана/);
+	await assert.rejects(translate('Hello', { apiKey: API_KEY }), /Google Cloud quota exceeded/);
 });
 
 test('HTTP 400 and 401 explain invalid keys without exposing the service response', async context => {
@@ -84,7 +96,7 @@ test('HTTP 400 and 401 explain invalid keys without exposing the service respons
 		const json = context.mock.fn(async () => ({ error: { message: API_KEY } }));
 		fetchMock.mock.mockImplementation(async () => ({ ok: false, status, json }));
 		await assert.rejects(translate('Hello', { apiKey: API_KEY }), error => {
-			assert.match(error.message, /Проверьте API-ключ в настройках/);
+			assert.match(error.message, /Check your API key in Preferences/);
 			assert.match(error.message, new RegExp(`HTTP ${status}`));
 			assert.ok(!error.message.includes(API_KEY));
 			return true;
@@ -95,12 +107,12 @@ test('HTTP 400 and 401 explain invalid keys without exposing the service respons
 
 test('HTTP 403 explains API enablement, billing, and the documented quota failures', async context => {
 	context.mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 403 }));
-	await assert.rejects(translate('Hello', { apiKey: API_KEY }), /Проверьте API-ключ, квоты, Cloud Translation API и биллинг/);
+	await assert.rejects(translate('Hello', { apiKey: API_KEY }), /Check your API key, quotas, Cloud Translation API, and billing/);
 });
 
 test('other HTTP failures include their status', async context => {
 	context.mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 503 }));
-	await assert.rejects(translate('Hello', { apiKey: API_KEY }), /Google Translate недоступен \(HTTP 503\)/);
+	await assert.rejects(translate('Hello', { apiKey: API_KEY }), /Google Translate is unavailable \(HTTP 503\)/);
 });
 
 test('malformed response structures and empty translations are rejected', async context => {
@@ -118,7 +130,7 @@ test('malformed response structures and empty translations are rejected', async 
 		fetchMock.mock.mockImplementation(async () => ({
 			...translatedResponse(), json: async () => payload,
 		}));
-		await assert.rejects(translate('Hello', { apiKey: API_KEY }), /Не удалось прочитать ответ/);
+		await assert.rejects(translate('Hello', { apiKey: API_KEY }), /Could not read the Google Translate response/);
 	}
 });
 
@@ -127,14 +139,14 @@ test('invalid JSON has a response error rather than a network error', async cont
 		...translatedResponse(),
 		json: async () => { throw new SyntaxError('Invalid JSON'); },
 	}));
-	await assert.rejects(translate('Hello', { apiKey: API_KEY }), /Не удалось прочитать ответ/);
+	await assert.rejects(translate('Hello', { apiKey: API_KEY }), /Could not read the Google Translate response/);
 });
 
 test('network failures include a useful error and retain their cause', async context => {
 	const cause = new TypeError('Failed to fetch');
 	context.mock.method(globalThis, 'fetch', async () => { throw cause; });
 	await assert.rejects(translate('Hello', { apiKey: API_KEY }), error => {
-		assert.match(error.message, /Проверьте соединение/);
+		assert.match(error.message, /Check your connection/);
 		assert.equal(error.cause, cause);
 		return true;
 	});
@@ -167,7 +179,7 @@ test('requests time out after ten seconds with a readable error', async context 
 	}));
 	const pending = translate('Hello', { apiKey: API_KEY });
 	controller.abort(new DOMException('Request timed out', 'TimeoutError'));
-	await assert.rejects(pending, /не ответил за 10 секунд/);
+	await assert.rejects(pending, /did not respond within 10 seconds/);
 	assert.deepEqual(timeoutMock.mock.calls[0].arguments, [10_000]);
 });
 

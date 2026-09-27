@@ -30,7 +30,7 @@ globalThis.fetch = async (input, options = {}) => {
 		|| options.method !== 'POST'
 		|| headers.get('X-Goog-Api-Key') !== 'test-api-key'
 		|| headers.get('Content-Type')?.split(';')[0].trim() !== 'application/json'
-		|| body.target !== 'ru'
+		|| !['ru', 'fr'].includes(body.target)
 		|| body.format !== 'text'
 		|| body.model !== 'nmt') {
 		throw new Error(`Unexpected translation request: ${url}`);
@@ -52,10 +52,17 @@ globalThis.fetch = async (input, options = {}) => {
 		throw new TypeError('Simulated network failure');
 	}
 	const translations = {
-		'Hello, world!': 'Привет, мир!',
-		'Good morning!': 'Доброе утро!',
-		'Slow translation': 'Медленный перевод',
-	};
+		ru: {
+			'Hello, world!': 'Привет, мир!',
+			'Good morning!': 'Доброе утро!',
+			'Slow translation': 'Медленный перевод',
+		},
+		fr: {
+			'Hello, world!': 'Bonjour, monde!',
+			'Good morning!': 'Bonjour !',
+			'Slow translation': 'Traduction lente',
+		},
+	}[body.target];
 	if (!(source in translations)) {
 		throw new Error(`Unexpected selected text: ${source}`);
 	}

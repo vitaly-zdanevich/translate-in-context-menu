@@ -1,9 +1,11 @@
+import { normalizeTargetLanguage } from './languages.js';
+
 /** Maximum selection length, measured in Unicode code points. */
 export const MAX_TEXT_LENGTH = 5000;
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const MENU_TEXT_LENGTH = 110;
-const INVALID_RESPONSE_MESSAGE = 'Не удалось прочитать ответ Google Translate. Попробуйте ещё раз.';
+const INVALID_RESPONSE_MESSAGE = 'Could not read the Google Translate response. Please try again.';
 
 /**
  * Remove surrounding whitespace while preserving the selected text's layout.
@@ -42,34 +44,34 @@ function requestError(cause, signal, timeoutSignal) {
 	}
 
 	if (timeoutSignal.aborted) {
-		return new Error('Google Translate не ответил за 10 секунд. Попробуйте ещё раз.', { cause });
+		return new Error('Google Translate did not respond within 10 seconds. Please try again.', { cause });
 	}
 
-	return new Error('Не удалось подключиться к Google Translate. Проверьте соединение.', { cause });
+	return new Error('Could not connect to Google Translate. Check your connection.', { cause });
 }
 
 /**
- * Translate a selection into Russian with the official Google Cloud Basic API.
+ * Translate a selection into the chosen language with the official Google Cloud Basic API.
  * The key goes in a request header and selected text goes in the JSON body.
  * Cookies, referrer information, and browser caching are disabled.
  * @param {string} text Selected text; at most 5000 Unicode code points.
- * @param {{ apiKey?: string, signal?: AbortSignal }} [options] API key and optional cancellation.
+ * @param {{ apiKey?: string, targetLanguage?: string, signal?: AbortSignal }} [options] API key, target (Russian by default), and cancellation.
  * @returns {Promise<string>} Plain translated text.
  * @throws {Error} For invalid text, missing keys, HTTP errors, malformed responses, or timeouts.
  */
-export async function translate(text, { apiKey, signal } = {}) {
+export async function translate(text, { apiKey, targetLanguage, signal } = {}) {
 	const selection = normalizeText(text);
 	if (!selection) {
-		throw new Error('Выделите текст для перевода.');
+		throw new Error('Select text to translate.');
 	}
 
 	if ([...selection].length > MAX_TEXT_LENGTH) {
-		throw new Error(`Текст слишком длинный (максимум ${MAX_TEXT_LENGTH} символов).`);
+		throw new Error(`Text is too long (maximum ${MAX_TEXT_LENGTH} characters).`);
 	}
 
 	const key = normalizeText(apiKey);
 	if (!key) {
-		throw new Error('Добавьте API-ключ Google Cloud в настройках расширения.');
+		throw new Error('Set your Google Cloud API key in Preferences.');
 	}
 
 	signal?.throwIfAborted();
@@ -84,7 +86,7 @@ export async function translate(text, { apiKey, signal } = {}) {
 				'Content-Type': 'application/json; charset=utf-8',
 				'X-goog-api-key': key,
 			},
-			body: JSON.stringify({ q: selection, target: 'ru', format: 'text', model: 'nmt' }),
+			body: JSON.stringify({ q: selection, target: normalizeTargetLanguage(targetLanguage), format: 'text', model: 'nmt' }),
 			signal: requestSignal,
 			credentials: 'omit',
 			cache: 'no-store',
@@ -95,19 +97,19 @@ export async function translate(text, { apiKey, signal } = {}) {
 	}
 
 	if (response.status === 400 || response.status === 401) {
-		throw new Error(`Google Cloud отклонил запрос (HTTP ${response.status}). Проверьте API-ключ в настройках.`);
+		throw new Error(`Google Cloud rejected the request (HTTP ${response.status}). Check your API key in Preferences.`);
 	}
 
 	if (response.status === 403) {
-		throw new Error('Доступ запрещён (HTTP 403). Проверьте API-ключ, квоты, Cloud Translation API и биллинг.');
+		throw new Error('Access denied (HTTP 403). Check your API key, quotas, Cloud Translation API, and billing.');
 	}
 
 	if (response.status === 429) {
-		throw new Error('Квота Google Cloud исчерпана. Проверьте лимиты или попробуйте позже.');
+		throw new Error('Google Cloud quota exceeded. Check your limits or try again later.');
 	}
 
 	if (!response.ok) {
-		throw new Error(`Google Translate недоступен (HTTP ${response.status}). Попробуйте позже.`);
+		throw new Error(`Google Translate is unavailable (HTTP ${response.status}). Please try again later.`);
 	}
 
 	let payload;

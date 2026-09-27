@@ -9,8 +9,12 @@ responses, empty selections, and waking the suspended MV3 background page.
 The tests open Firefox's Add-ons Manager to exercise its native embedded
 preferences: save, reload, and remove a fake API key. A request counter verifies
 that missing-key handling and preference changes do not call the translation API.
+The target-language check saves French through the native dropdown, reloads the
+preferences, and verifies the same selection receives a French translation after
+its Russian result was cached. Every test restores Russian through the dropdown.
 Clicking the menu checks the Google Translate URL and selected text; the browser
-navigation is intercepted before it reaches the external website.
+navigation is intercepted before it reaches the external website. Both Russian
+and French targets are checked in the URL.
 
 Phone checks use the production Node HTTP relay, real SSE connections, and the
 phone page in a desktop Firefox tab. They exercise Firefox's registered

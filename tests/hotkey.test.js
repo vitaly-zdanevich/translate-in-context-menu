@@ -26,15 +26,16 @@ function setup(translation = async () => 'Привет') {
 }
 
 test('the shortcut publishes loading and translation without sending the Google credential', async () => {
-	const app = setup(async (source, { apiKey }) => {
+	const app = setup(async (source, { apiKey, targetLanguage }) => {
 		assert.equal(source, 'Hello');
 		assert.equal(apiKey, 'google-test-key');
+		assert.equal(targetLanguage, 'ru');
 		return 'Привет';
 	});
 	await app.press();
 	assert.deepEqual(app.state.sent.map(item => item.result), [
-		{ source: 'Hello', translation: '', error: '' },
-		{ source: 'Hello', translation: 'Привет', error: '' },
+		{ source: 'Hello', translation: '', error: '', targetLanguage: 'ru' },
+		{ source: 'Hello', translation: 'Привет', error: '', targetLanguage: 'ru' },
 	]);
 	assert.ok(!JSON.stringify(app.state.sent).includes('google-test-key'));
 	assert.equal(app.state.notices.length, 0);
@@ -80,8 +81,9 @@ test('a disconnected relay prevents a potentially billable Google request', asyn
 
 test('Google failures are displayed on the phone and are not cached', async () => {
 	const app = setup(async () => { throw new Error('Test quota exceeded'); });
+	app.settings.targetLanguage = 'de';
 	await app.press();
-	assert.deepEqual(app.state.sent.at(-1).result, { source: 'Hello', translation: '', error: 'Test quota exceeded' });
+	assert.deepEqual(app.state.sent.at(-1).result, { source: 'Hello', translation: '', error: 'Test quota exceeded', targetLanguage: 'de' });
 	await app.press();
 	assert.equal(app.state.calls, 2);
 });
@@ -94,6 +96,39 @@ test('successful translations stay cached until the API key changes', async () =
 	app.settings.apiKey = 'replacement-key';
 	await app.press();
 	assert.equal(app.state.calls, 2);
+});
+
+test('phone translations are cached per target language and reused when switching back', async () => {
+	const app = setup(async (_source, { targetLanguage }) => targetLanguage === 'de' ? 'Hallo' : 'Привет');
+	await app.press();
+	app.settings.targetLanguage = 'de';
+	await app.press();
+	assert.deepEqual(app.state.sent.slice(-2).map(item => item.result), [
+		{ source: 'Hello', translation: '', error: '', targetLanguage: 'de' },
+		{ source: 'Hello', translation: 'Hallo', error: '', targetLanguage: 'de' },
+	]);
+	app.settings.targetLanguage = 'ru';
+	await app.press();
+	assert.equal(app.state.calls, 2);
+	assert.equal(app.state.sent.at(-1).result.translation, 'Привет');
+	assert.equal(app.state.sent.at(-1).result.targetLanguage, 'ru');
+});
+
+test('a target language change supersedes an unfinished phone translation', async () => {
+	const first = Promise.withResolvers();
+	const started = Promise.withResolvers();
+	const app = setup(async (_source, { targetLanguage }) => {
+		if (targetLanguage === 'ru') { started.resolve(); return first.promise; }
+		return 'Hallo';
+	});
+	const old = app.press();
+	await started.promise;
+	app.settings.targetLanguage = 'de';
+	await app.press();
+	first.resolve('Привет');
+	await old;
+	assert.deepEqual(app.state.sent.at(-1).result, { source: 'Hello', translation: 'Hallo', error: '', targetLanguage: 'de' });
+	assert.ok(!app.state.sent.some(item => item.result.translation === 'Привет'));
 });
 
 test('a late response from an earlier hotkey cannot replace the latest text', async () => {

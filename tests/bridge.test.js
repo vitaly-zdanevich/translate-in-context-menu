@@ -133,6 +133,37 @@ test('an authenticated translation reaches connected phones and reconnecting pho
 	assert.equal((await second.next()).error, 'Translation unavailable.');
 });
 
+test('the relay forwards target languages and preserves messages from older senders', async context => {
+	const app = await setup(context);
+	const stream = await app.stream();
+	await stream.next();
+	for (const targetLanguage of ['ar', 'zh-TW']) {
+		assert.equal((await app.post({ source: 'Hello', translation: 'Translated', targetLanguage })).status, 204);
+		const state = await stream.next();
+		assert.equal(state.targetLanguage, targetLanguage);
+		const reconnected = await app.stream();
+		assert.deepEqual(await reconnected.next(), state);
+		reconnected.close();
+	}
+	assert.equal((await app.post({ source: 'Hello', translation: 'Привет' })).status, 204);
+	const legacyState = await stream.next();
+	assert.equal(Object.hasOwn(legacyState, 'targetLanguage'), false);
+	assert.equal(legacyState.translation, 'Привет');
+});
+
+test('unsupported or malformed target languages cannot replace an accepted translation', async context => {
+	const app = await setup(context);
+	await app.post({ source: 'Keep', translation: 'مرحبا', targetLanguage: 'ar' });
+	for (const targetLanguage of [null, 7, false, [], {}, '', 'xx', 'AR', ' ar ', 'ar<script>']) {
+		const response = await app.post({ source: 'Replace', translation: 'Invalid', targetLanguage });
+		assert.equal(response.status, 400, JSON.stringify(targetLanguage));
+	}
+	const stream = await app.stream();
+	const state = await stream.next();
+	assert.equal(state.source, 'Keep');
+	assert.equal(state.targetLanguage, 'ar');
+});
+
 test('slow phones are disconnected without blocking another phone or the publisher', async context => {
 	const app = await setup(context);
 	let slowResponse;
