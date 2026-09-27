@@ -13,22 +13,34 @@
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
 [![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=vitaly-zdanevich_translate-in-context-menu&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=vitaly-zdanevich_translate-in-context-menu)
 
-A small Firefox extension that shows a Russian translation of selected text in the native context menu, or on your phone when you press **Alt+Shift+T**. Those translations use the official [Google Cloud Translation Basic API (v2)](https://docs.cloud.google.com/translate/docs/reference/rest/v2/translate), detect the source language automatically, and translate into Russian with your Google Cloud API key. **Alt+Shift+Y** instead pastes the selected text into an existing Yandex Translate tab, without an API key.
+![Translate in Context Menu icon](icons/translate.svg)
+
+A small Firefox extension that shows a Russian translation of selected text in the native context menu, in a system notification with **Alt+Shift+N**, or on another device with **Alt+Shift+T**. Those translations use the official [Google Cloud Translation Basic API (v2)](https://docs.cloud.google.com/translate/docs/reference/rest/v2/translate), detect the source language automatically, and translate into Russian with your Google Cloud API key. **Alt+Shift+Y** instead pastes the selected text into an existing Yandex Translate tab, without an API key.
 
 Modern JavaScript modules, native Firefox APIs, and `fetch`. No JavaScript dependencies, bundler, or installation of npm packages.
 
 ## Try it in Firefox
 
+GitHub does not allow clickable `about:` links. Copy these addresses into Firefox’s address bar.
+
 1. Use Firefox Desktop 156 or newer.
-2. Open `about:debugging#/runtime/this-firefox`.
+2. Paste `about:debugging#/runtime/this-firefox` into the address bar and press Enter.
 3. Click **Load Temporary Add-on…** and select this folder’s `manifest.json`.
 4. Allow website access if Firefox asks. Automatic translation requires access to the page’s selection before you click a menu item.
 5. Open `about:addons`, select **Translate in Context Menu**, and open **Preferences**. Paste your Google Cloud Translation API key and click **Save**.
 6. Select text on an HTTP or HTTPS page and open its context menu. **Переводим…** changes to the Russian translation when it arrives.
 
-The menu item stays clickable, including during loading and errors. Clicking it opens **Google Translate** in a new tab with the selected text and Russian as the target language. Long translations are shortened to fit the menu; the phone display shows the full translation. The API key and phone connection are managed in Firefox’s add-on Preferences.
+The menu item stays clickable, including during loading and errors. Clicking it opens **Google Translate** in a new tab with the selected text and Russian as the target language. Long translations are shortened to fit the menu; the display on another device shows the full translation. The API key and device connection are managed in Firefox’s add-on Preferences.
 
 Temporary add-ons are removed when Firefox closes. After editing the code, click **Reload** on the extension in `about:debugging`. See [Mozilla’s temporary installation guide](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/).
+
+## Show a system notification
+
+Select text on a webpage in Firefox and press **Alt+Shift+N**. The extension translates it into Russian using your saved Google API key and shows the result in a native system notification. No local server or second device is needed. Your working tab keeps focus, and the clipboard stays unchanged.
+
+Firefox and your operating system control the notification’s appearance, size, and duration. Long translations may be shortened. Firefox’s [notification options](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/notifications/NotificationOptions) provide a title, message, and icon, with no width, height, or CSS settings. The shortcut also reports setup and translation errors through notifications.
+
+Change the shortcut in **about:addons → gear menu → Manage Extension Shortcuts** if another extension or your desktop already uses it. After reloading the extension, check that the shortcut is assigned. System notification settings, including Do Not Disturb, can suppress the popup.
 
 ## Paste into an open Yandex Translate window
 
@@ -42,9 +54,9 @@ If several Yandex tabs are open, the shortcut prefers a tab in another window, t
 
 The shortcut sends the selected text to the existing Yandex webpage, which processes it through its own service. Only `https://translate.yandex.ru/` tabs in this Firefox profile are targeted; another browser or profile needs its own extension instance. This integration depends on Yandex’s page keeping its `#textarea` element and input behavior.
 
-## Use your phone as a second screen
+## Use another device as a second screen
 
-The phone display is a **plain HTTP live page** for Firefox on Android on the same local network. There are no certificates or service worker to set up. Keep the page open; it has no offline mode. A home-screen shortcut may be available through Firefox’s menu, but this HTTP MVP does not require PWA installation. See [Mozilla’s Android web app guide](https://support.mozilla.org/en-US/kb/use-web-apps-firefox-android) and [PWA installation requirements](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable).
+The display is a **plain HTTP live page** for another device on the same local network: a phone, laptop, or even a TV with a compatible web browser. The browser needs modern JavaScript, local storage, and [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events); TV browser support varies. There are no certificates or service worker to set up. Keep the page open; it has no offline mode and does not require PWA installation. On Firefox for Android, see [Mozilla’s web app guide](https://support.mozilla.org/en-US/kb/use-web-apps-firefox-android) for home-screen shortcuts.
 
 On your computer, use Node.js 24 or newer, then run these commands from this folder. No packages need to be installed:
 
@@ -53,7 +65,7 @@ npm run phone:setup
 npm run phone
 ```
 
-The setup command detects the computer’s private IPv4 address and saves a random pairing token in `.local/phone/config.json`. If it finds multiple addresses, specify the one on the phone’s network:
+The setup command detects the computer’s private IPv4 address and saves a random pairing token in `.local/phone/config.json`. If it finds multiple addresses, specify the one on the other device’s network:
 
 ```sh
 npm run phone:setup -- 192.168.1.42
@@ -61,17 +73,17 @@ npm run phone:setup -- 192.168.1.42
 
 Use your computer’s actual address in place of the example. Setup preserves the pairing token when run again. Leave `npm run phone` running while using the display; **Ctrl+C** stops it.
 
-1. Open the **Phone pairing URL** printed by the server in Firefox on your phone. Alternatively, open the base address, such as `http://192.168.1.42:8787`, and paste the printed pairing token. The page should say **Connected**.
+1. Open the **Phone pairing URL** printed by the server in a browser on the other device. Alternatively, open the base address, such as `http://192.168.1.42:8787`, and paste the printed pairing token. The page should say **Connected**.
 2. In the desktop extension’s **Preferences → Phone display**, save the printed **Extension relay URL** and **Extension pairing token**. Your Google API key stays in its separate field on the desktop.
-3. Select text on a webpage in desktop Firefox and press **Alt+Shift+T**. The phone shows the original text and Russian translation. The shortcut works while Firefox is focused, including selections in ordinary text inputs; password fields are excluded.
+3. Select text on a webpage in desktop Firefox and press **Alt+Shift+T**. The other device shows the original text and Russian translation. The shortcut works while Firefox is focused, including selections in ordinary text inputs; password fields are excluded.
 
-Change the shortcut in **about:addons → gear menu → Manage Extension Shortcuts** if your desktop intercepts it. The phone follows `prefers-color-scheme`: dark mode uses background `#000` and text `#bbb`.
+Change the shortcut in **about:addons → gear menu → Manage Extension Shortcuts** if your desktop intercepts it. The display follows `prefers-color-scheme`: dark mode uses background `#000` and text `#bbb`.
 
-The extension sends updates to the local server with HTTP POST. The phone keeps a single [Server-Sent Events connection](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events) open for immediate updates, without polling or a WebSocket library. SSE suits this one-way display and is supported by Node’s built-in HTTP server and the browser’s `EventSource` API. The server retains only the latest update in RAM and sends it again when the phone reconnects.
+The extension sends updates to the local server with HTTP POST. The display keeps a single [Server-Sent Events connection](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events) open for immediate updates, without polling or a WebSocket library. SSE suits this one-way display and is supported by Node’s built-in HTTP server and the browser’s `EventSource` API. The server retains only the latest update in RAM and sends it again when the device reconnects.
 
-If the phone cannot connect, check that both devices are on the same network, the server is running, and your firewall allows incoming TCP port **8787** from that network. Guest Wi-Fi may isolate devices. Use `http://` explicitly; if Firefox’s HTTPS-Only Mode intervenes, allow HTTP for this local address. When the computer’s LAN address changes, stop the server, run setup again, restart it with `npm run phone`, and update the extension URL and phone bookmark. Android may suspend background tabs or a locked phone; reopen the display to reconnect.
+If the other device cannot connect, check that both devices are on the same network, the server is running, and your firewall allows incoming TCP port **8787** from that network. Guest Wi-Fi may isolate devices. Use `http://` explicitly; if the browser’s HTTPS-Only Mode intervenes, allow HTTP for this local address. When the computer’s LAN address changes, stop the server, run setup again, restart it with `npm run phone`, and update the extension URL and the other device’s bookmark. Browsers may suspend background tabs or sleeping devices; reopen the display to reconnect.
 
-This mode sends the selected text, translation, and pairing credential **unencrypted over your LAN**. Use a trusted local network and keep the server off the public internet. The Google API key is never sent to the relay or phone. The pairing token is stored in the local config, extension preferences, and phone’s local storage; **Disconnect** on the phone forgets its token and clears its display. To revoke all pairings, stop the server, delete `.local/phone/config.json`, run setup again, restart with `npm run phone`, and enter the new token on each device.
+This mode sends the selected text, translation, and pairing credential **unencrypted over your LAN**. Use a trusted local network and keep the server off the public internet. The Google API key is never sent to the relay or other device. The pairing token is stored in the local config, extension preferences, and the other browser’s local storage; **Disconnect** on the display page forgets its token and clears its display. To revoke all pairings, stop the server, delete `.local/phone/config.json`, run setup again, restart with `npm run phone`, and enter the new token on each device.
 
 ## Get a Google Cloud API key
 
@@ -99,14 +111,13 @@ The $10 credit is shared across Cloud Translation Basic and Advanced and does no
 
 ## Behavior and privacy
 
-- With a saved API key, opening a context menu over selected text sends an uncached selection in an HTTPS POST body to `https://translation.googleapis.com/language/translate/v2`. The phone shortcut does the same after checking that the local relay is reachable. Simply selecting text does not send a request. Without a key, the menu asks you to set one in Preferences.
+- With a saved API key, opening a context menu over selected text or pressing **Alt+Shift+N** sends an uncached selection in an HTTPS POST body to `https://translation.googleapis.com/language/translate/v2`. The second-screen shortcut does the same after checking that the local relay is reachable. Simply selecting text does not send a request. Without a key, the menu asks you to set one in Preferences.
 - The API key is sent to Google only in the `X-Goog-Api-Key` authentication header, never in the URL. No page URL, cookies, or browser history are included. Google still receives the request and its network metadata, including your IP address.
 - The key is stored as plain text in this Firefox profile using `browser.storage.local`; it is not encrypted or synced. The password input only masks its display. The extension contains no bundled credentials. Remove the saved key in Preferences or revoke it in Google Cloud Credentials.
 - Clicking the menu opens `translate.google.com` with the selection in the URL, so the text can appear in that tab’s browser history. This is separate from the Cloud API request.
 - HTTP/HTTPS host access is required because Firefox exposes the selection in [`menus.onShown`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/menus/onShown) only with host permission. The shortcuts run a small selection reader in the active tab’s frames using [`scripting.executeScript`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/scripting/executeScript). The Yandex shortcut also writes to its destination’s text field. Neither monitors typing nor runs automatically on page loads. There are no analytics.
-- Successful menu and phone translations are cached in separate in-memory maps without entry limits. Firefox clears them when it unloads the background page or the extension stops. Each cache is cleared when its next translation uses a different API key. The extension, relay, and phone save no translation history to disk.
+- Successful menu, notification, and second-screen translations are cached in separate in-memory maps without entry limits. Firefox clears them when it unloads the background page or the extension stops. Each cache is cleared when its next translation uses a different API key. The extension, relay, and display page save no translation history to disk; the operating system may retain notifications in its notification history.
 - Google API translations are limited to 5,000 Unicode characters. Requests time out after 10 seconds. Closing the menu cancels the pending request; failures appear in the menu and can be retried by reopening it.
-- Firefox internal pages, protected browser pages, and local files are outside this MVP’s scope. Firefox’s built-in PDF viewer may also restrict access.
 
 API keys do not remove Google Cloud quotas. The menu handles HTTP 429 and HTTP 403 errors; Google documents quota failures as HTTP 403. Check the key, API enablement, billing, and [quota settings](https://docs.cloud.google.com/translate/quotas) if requests fail.
 
@@ -114,10 +125,7 @@ The manifest declares `websiteContent` and `authenticationInfo` transmission usi
 
 ## Other display options
 
-The phone display and Yandex tab integration are implemented. These alternatives would need additional work:
-
-- **System popup:** Firefox’s [notifications API](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/notifications) can show a translation in a native notification. The operating system controls its size and lifetime, so long text may be shortened. This version uses notifications for shortcut setup and connection errors.
-- **A terminal or `agy`:** [native messaging](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging) connects Firefox to a separately installed and registered local program. A helper could pass text to a terminal display or invoke [Antigravity’s CLI](https://antigravity.google/docs/cli/headless/). It does not automatically paste into an already open terminal session. For displaying this extension’s Google translation, a small terminal reader would be sufficient; an additional AI call is unnecessary.
+**A terminal or `agy`** would need additional work. [Native messaging](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging) connects Firefox to a separately installed and registered local program. A helper could pass text to a terminal display or invoke [Antigravity’s CLI](https://antigravity.google/docs/cli/headless/). It does not automatically paste into an already open terminal session. For displaying this extension’s Google translation, a small terminal reader would be sufficient; an additional AI call is unnecessary.
 
 ## Development
 
@@ -138,13 +146,13 @@ python3 tests/e2e/firefox.py
 python3 scripts/build.py
 ```
 
-Tests use mock Google responses and do not send selected text to Google. Unit and local integration tests cover translation, menu behavior, preferences, shortcut cancellation, Yandex tab selection and input events, pairing, relay authentication, SSE reconnects, and phone rendering. Automated Yandex tests use mock tabs and fields without contacting Yandex. See [the Firefox end-to-end test instructions](tests/e2e/README.md) for its browser and display requirements.
+Tests use mock Google responses and do not send selected text to Google. Unit and local integration tests cover translation, menu behavior, native notifications, preferences, shortcut cancellation, Yandex tab selection and input events, pairing, relay authentication, SSE reconnects, and display rendering. Automated Yandex tests use mock tabs and fields without contacting Yandex. See [the Firefox end-to-end test instructions](tests/e2e/README.md) for its browser and display requirements.
 
 [GitHub Actions](https://github.com/vitaly-zdanevich/translate-in-context-menu/actions/workflows/tests.yml) runs coverage, Firefox integration tests, and packaging on pushes to `main`, version tags, and pull requests. CI uses Node.js 24 and the latest stable Firefox; all JavaScript actions also run on Node.js 24. Successful runs attach the extension ZIP as the `firefox-extension` artifact. No API keys or pairing credentials are required.
 
 The separate [SonarCloud workflow](.github/workflows/build.yml) analyzes the production code and tests using the repository’s `SONAR_TOKEN` secret. `npm run test:coverage` also writes `lcov.info` using Node’s built-in reporter, which SonarCloud imports without additional dependencies. See the [project dashboard](https://sonarcloud.io/dashboard?id=vitaly-zdanevich_translate-in-context-menu) and [SonarCloud coverage documentation](https://docs.sonarsource.com/sonarqube-cloud/enriching/test-coverage/javascript-typescript-test-coverage). Fork pull requests run the regular tests; the SonarCloud job is skipped because they cannot access the secret.
 
-Packaging writes `dist/translate-in-context-menu-1.0.0.zip` with only the manifest, extension source files, and icon. Keep this source folder to run the phone relay; its files and private pairing config are not bundled in the extension. A normal, permanent Firefox installation requires [Mozilla signing](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/); this MVP is ready for temporary loading.
+Packaging writes `dist/translate-in-context-menu-1.1.0.zip` with only the manifest, extension source files, and icon. Keep this source folder to run the local relay; its files and private pairing config are not bundled in the extension. A normal, permanent Firefox installation requires [Mozilla signing](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/); the extension supports temporary loading without signing.
 
 Firefox’s [`menus.refresh()`](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/menus/refresh) updates the open menu. [Background ES modules](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/background) keep the source directly runnable without a build tool.
 
