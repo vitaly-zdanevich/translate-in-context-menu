@@ -44,6 +44,8 @@ Firefox and your operating system control the notification’s appearance, size,
 
 Change the shortcut in **about:addons → gear menu → Manage Extension Shortcuts** if another extension or your desktop already uses it. After reloading the extension, check that the shortcut is assigned. System notification settings, including Do Not Disturb, can suppress the popup.
 
+On Linux, when no desktop notification service is installed, you can, in `about:config` set `alerts.useSystemBackend` to `false`.
+
 ## Paste into an open Yandex Translate window
 
 1. Open [Yandex Translate](https://translate.yandex.ru/) in another window of the same Firefox profile. Wait for its text field to become ready and choose the target language there.
