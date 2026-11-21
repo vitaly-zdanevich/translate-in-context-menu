@@ -2,6 +2,7 @@
 	"name": "translate-in-context-menu",
 	"version": "1.2.0",
 	"private": true,
+	"license": "MIT",
 	"type": "module",
 	"description": "A Firefox extension that translates selected text into your chosen language in the context menu.",
 	"engines": {
