@@ -76,9 +76,8 @@ class FirefoxContextMenuTest(unittest.TestCase):
 		cls.addClassCleanup(cls.log.close)
 		cls.process = subprocess.Popen([
 			os.environ.get('FIREFOX_BIN', 'firefox'), '--no-remote',
-			'--profile', str(profile), '--marionette',
-			'--remote-allow-system-access', 'about:blank',
-		], stdout=cls.log, stderr=cls.log)
+			'--profile', str(profile), '--marionette', 'about:blank',
+		], env={**os.environ, 'MOZ_REMOTE_ALLOW_SYSTEM_ACCESS': '1'}, stdout=cls.log, stderr=cls.log)
 		cls.addClassCleanup(cls.stop_browser)
 		cls.browser = Marionette(port)
 		cls.addClassCleanup(cls.browser.close)
