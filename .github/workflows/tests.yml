@@ -8,7 +8,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   test:
@@ -17,6 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          fetch-tags: true
           persist-credentials: false
 
       - uses: actions/setup-node@v6
@@ -38,6 +43,49 @@ jobs:
           FIREFOX_BIN: ${{ steps.firefox.outputs.firefox-path }}
         run: xvfb-run -a npm run test:e2e
 
+      - name: Set release version
+        id: version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git fetch --tags --force origin
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          import os
+          import re
+          import subprocess
+
+          manifest_path = Path('manifest.json')
+          text = manifest_path.read_text()
+          manifest = json.loads(text)
+          major, minor, patch = map(int, manifest['version'].split('.'))
+          pattern = re.compile(rf'^v{major}\.{minor}\.(0|[1-9]\d*)$')
+
+          head_tags = subprocess.check_output(
+              ['git', 'tag', '--points-at', 'HEAD', f'v{major}.{minor}.*'],
+              text=True,
+          ).splitlines()
+          matching_head = [int(match.group(1)) for tag in head_tags if (match := pattern.match(tag))]
+
+          if matching_head:
+              next_patch = max(matching_head)
+          else:
+              all_tags = subprocess.check_output(
+                  ['git', 'tag', '--list', f'v{major}.{minor}.*'],
+                  text=True,
+              ).splitlines()
+              existing = [int(match.group(1)) for tag in all_tags if (match := pattern.match(tag))]
+              next_patch = max(patch, max(existing) + 1) if existing else patch
+
+          version = f'{major}.{minor}.{next_patch}'
+          updated = re.sub(r'("version"\s*:\s*")[^"]+(")', rf'\g<1>{version}\2', text, count=1)
+          assert json.loads(updated)['version'] == version
+          manifest_path.write_text(updated)
+
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as output:
+              output.write(f'version={version}\ntag=v{version}\n')
+          PY
+
       - name: Build extension
         run: npm run build
 
@@ -47,3 +95,19 @@ jobs:
           name: firefox-extension
           path: dist/translate-in-context-menu-*.zip
           if-no-files-found: error
+
+      - name: Create GitHub release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          archive="dist/translate-in-context-menu-${{ steps.version.outputs.version }}.zip"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$archive" --clobber
+          else
+            gh release create "$tag" "$archive" \
+              --target "$GITHUB_SHA" \
+              --title "$tag" \
+              --generate-notes
+          fi
